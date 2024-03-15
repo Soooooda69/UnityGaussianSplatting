@@ -57,6 +57,7 @@ v2f vert (uint vtxID : SV_VertexID, uint instID : SV_InstanceID)
 		o.pos = quadPos;
 
 		float2 deltaScreenPos = (quadPos.x * view.axis1 + quadPos.y * view.axis2) * 2 / _ScreenParams.xy;
+		float2 unitPos = quadPos * 2 / _ScreenParams.xy;
 		o.vertex = centerClipPos;
 		o.vertex.xy += deltaScreenPos * centerClipPos.w;
 
@@ -68,6 +69,8 @@ v2f vert (uint vtxID : SV_VertexID, uint instID : SV_InstanceID)
 			uint selVal = _SplatSelectedBits.Load(wordIdx * 4);
 			if (selVal & (1 << bitIdx))
 			{
+				o.vertex.xy -= deltaScreenPos * centerClipPos.w;
+				o.vertex.xy += normalize(unitPos) * 0.02 * centerClipPos.w;
 				o.col.a = -1;				
 			}
 		}
@@ -86,17 +89,17 @@ half4 frag (v2f i) : SV_Target
 	else
 	{
 		// "selected" splat: magenta outline, increase opacity, magenta tint
-		half3 selectedColor = half3(1,0,1);
+		half3 selectedColor = half3(0,0.3,0.8);
 		if (alpha > 7.0/255.0)
 		{
 			if (alpha < 10.0/255.0)
 			{
-				alpha = 1;
+				alpha = 0.1;
 				i.col.rgb = selectedColor;
 			}
 			alpha = saturate(alpha + 0.3);
 		}
-		i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
+		// i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
 	}
 	
     if (alpha < 1.0/255.0)

@@ -427,6 +427,27 @@ bool IsSplatSelected(uint idx)
     return (selVal & (1 << bitIdx)) != 0;
 }
 
+float3 _RayOrigin;
+float3 _RayDirection;
+RWStructuredBuffer<float> _DistancesBuffer;
+RWStructuredBuffer<float3> _PositionsBuffer;
+[numthreads(GROUP_SIZE,1,1)]
+void CSSelectPointByRayCast (uint3 id : SV_DispatchThreadID)
+{
+    uint idx = id.x;
+    if (idx >= _SplatCount)
+        return;
+
+    float3 pos = LoadSplatPos(idx);
+    _PositionsBuffer[idx] = pos;
+    
+    float3 v = pos - _RayOrigin;
+    float t = dot(v, _RayDirection);
+    float3 projPos = _RayOrigin + t * _RayDirection;
+    float dist = distance(pos, projPos);
+    _DistancesBuffer[idx] = dist;
+}
+
 [numthreads(GROUP_SIZE,1,1)]
 void CSTranslateSelection (uint3 id : SV_DispatchThreadID)
 {

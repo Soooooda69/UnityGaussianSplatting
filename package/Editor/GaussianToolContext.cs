@@ -14,11 +14,13 @@ namespace GaussianSplatting.Editor
         const string k_IconPath = "Packages/org.nesnausk.gaussian-splatting/Editor/Icons/GaussianContext.png";
 
         Vector2 m_MouseStartDragPos;
-
+        bool m_MeasureToolActive;
         protected override Type GetEditorToolType(Tool tool)
         {
             if (tool == Tool.Move)
                 return typeof(GaussianMoveTool);
+            if (tool == Tool.Custom)
+                return typeof(GaussianMeasureTool);
             //if (tool == Tool.Rotate)
             //    return typeof(GaussianRotateTool); // not correctly working yet
             //if (tool == Tool.Scale)
@@ -104,7 +106,7 @@ namespace GaussianSplatting.Editor
                     HandleUtility.AddDefaultControl(id);
                     break;
                 case EventType.MouseDown:
-                    if (IsViewToolActive())
+                    if (IsViewToolActive() || GetEditorToolType(Tools.current) == typeof(GaussianMeasureTool))
                         break;
                     if (HandleUtility.nearestControl == id && evt.button == 0)
                     {

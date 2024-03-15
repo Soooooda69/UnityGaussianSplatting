@@ -39,5 +39,13 @@ namespace GaussianSplatting.Editor
                 return Vector3.zero;
             return gs.editSelectedBounds.center;
         }
+        protected Rect FromToRect(Vector2 from, Vector2 to)
+        {
+            if (from.x > to.x)
+                (from.x, to.x) = (to.x, from.x);
+            if (from.y > to.y)
+                (from.y, to.y) = (to.y, from.y);
+            return new Rect(from.x, from.y, to.x - from.x, to.y - from.y);
+        }
     }
 }

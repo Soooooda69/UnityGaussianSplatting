@@ -316,6 +316,9 @@ namespace GaussianSplatting.Runtime
             public static readonly int SelectionMode = Shader.PropertyToID("_SelectionMode");
             public static readonly int SplatPosMouseDown = Shader.PropertyToID("_SplatPosMouseDown");
             public static readonly int SplatOtherMouseDown = Shader.PropertyToID("_SplatOtherMouseDown");
+            public static readonly int RayOrigin = Shader.PropertyToID("_RayOrigin");
+            public static readonly int RayDirection = Shader.PropertyToID("_RayDirection");
+            public static readonly int DistancesBuffer = Shader.PropertyToID("_DistancesBuffer");
         }
 
         [field: NonSerialized] public bool editModified { get; private set; }
@@ -344,6 +347,7 @@ namespace GaussianSplatting.Runtime
             ScaleSelection,
             ExportData,
             CopySplats,
+            SelectPointByRayCast,
         }
 
         public bool HasValidAsset =>
@@ -798,6 +802,63 @@ namespace GaussianSplatting.Runtime
 
             DispatchUtilsAndExecute(cmb, KernelIndices.SelectionUpdate, m_SplatCount);
             UpdateEditCountsAndBounds();
+        }
+        public (bool found, Vector3 point) EditSelectPointByRayCast(Camera cam, Vector2 screenPos)
+        {
+            if (!EnsureEditingBuffers()) return (false, Vector3.zero);
+
+            // Create a ray from the camera through the clicked screen position
+            Ray ray = cam.ScreenPointToRay(screenPos);
+
+            // Transform the ray from world space to the splat renderer's local space
+            Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
+            ray.origin = worldToLocal.MultiplyPoint(ray.origin);
+            ray.direction = worldToLocal.MultiplyVector(ray.direction).normalized;
+
+            // Find the closest point to the ray
+            int closestIndex = -1;
+            float closestDistance = float.MaxValue;
+            Vector3 closestPoint = Vector3.zero;
+
+            using (var cmb = new CommandBuffer { name = "SplatSelectPointByRayCast" })
+            {
+                // Create a temporary buffer to store the distances
+                var distancesBuffer = new ComputeBuffer(m_SplatCount, sizeof(float));
+                var positionsBuffer = new ComputeBuffer(m_SplatCount, sizeof(float) * 3);
+
+                SetAssetDataOnCS(cmb, KernelIndices.SelectPointByRayCast);
+                cmb.SetComputeVectorParam(m_CSSplatUtilities, "_RayOrigin", ray.origin);
+                cmb.SetComputeVectorParam(m_CSSplatUtilities, "_RayDirection", ray.direction);
+                cmb.SetComputeBufferParam(m_CSSplatUtilities, (int)KernelIndices.SelectPointByRayCast, "_DistancesBuffer", distancesBuffer);
+                cmb.SetComputeBufferParam(m_CSSplatUtilities, (int)KernelIndices.SelectPointByRayCast, "_PositionsBuffer", positionsBuffer);
+                DispatchUtilsAndExecute(cmb, KernelIndices.SelectPointByRayCast, m_SplatCount);
+
+                // Read back the distances from the GPU
+                var distances = new float[m_SplatCount];
+                var positions = new Vector3[m_SplatCount];
+                distancesBuffer.GetData(distances);
+                positionsBuffer.GetData(positions);
+
+                // Find the index and position of the closest point
+                for (int i = 0; i < m_SplatCount; i++)
+                {
+                    if (distances[i] < closestDistance)
+                    {
+                        closestDistance = distances[i];
+                        closestIndex = i;
+                        closestPoint = positions[closestIndex];
+                    }
+                }
+
+                distancesBuffer.Release();
+                positionsBuffer.Release();
+            }
+            if (closestIndex >= 0)
+            {
+                return (true, closestPoint);
+            }
+
+            return (false, Vector3.zero);
         }
 
         public void EditTranslateSelection(Vector3 localSpacePosDelta)
