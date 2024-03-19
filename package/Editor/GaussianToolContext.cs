@@ -164,7 +164,7 @@ namespace GaussianSplatting.Editor
 
                     Handles.matrix = prevMatrix;
                     // draw selection bounding box
-                    if (gs.editSelectedSplats > 0)
+                    if (gs.editSelectedSplats > 0 && GetEditorToolType(Tools.current) != typeof(GaussianMeasureTool))
                     {
                         var selBounds = GaussianSplatRendererEditor.TransformBounds(gs.transform, gs.editSelectedBounds);
                         Handles.DrawWireCube(selBounds.center, selBounds.size);

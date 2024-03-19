@@ -726,7 +726,7 @@ namespace GaussianSplatting.Runtime
             data.Dispose();
         }
 
-        bool EnsureEditingBuffers()
+        public bool EnsureEditingBuffers()
         {
             if (!HasValidAsset || !HasValidRenderSetup)
                 return false;
