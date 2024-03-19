@@ -10,7 +10,7 @@ class StreamData:
         self.port = 8888
         self.pose = "0 0 0 0 0 0 1"
         self.poses = []
-        self.images = [os.path.join('images_h', img) for img in os.listdir('images_h')]
+        self.images = [os.path.join('images_h', img) for img in os.listdir('test_data/images_h')]
         self.load_pose_data()
         self.start_server()
         

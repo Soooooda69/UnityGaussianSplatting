@@ -25,5 +25,4 @@
 /projects/**/UserSettings/*
 /projects/**/obj/*
 
-/images_h/
-/test_data/
+/test_data/*
