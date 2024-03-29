@@ -70,7 +70,7 @@ v2f vert (uint vtxID : SV_VertexID, uint instID : SV_InstanceID)
 			if (selVal & (1 << bitIdx))
 			{
 				o.vertex.xy -= deltaScreenPos * centerClipPos.w;
-				o.vertex.xy += normalize(unitPos) * 0.02 * centerClipPos.w;
+				o.vertex.xy += normalize(unitPos) * 0.05 * centerClipPos.w;
 				o.col.a = -1;				
 			}
 		}
@@ -89,8 +89,8 @@ half4 frag (v2f i) : SV_Target
 	else
 	{
 		// "selected" splat: magenta outline, increase opacity, magenta tint
-		half3 selectedColor = half3(0,0.3,0.8);
-		if (alpha > 7.0/255.0)
+		half3 selectedColor = half3(0,1,0);
+		if (alpha > 70.0/255.0)
 		{
 			if (alpha < 10.0/255.0)
 			{
@@ -99,7 +99,7 @@ half4 frag (v2f i) : SV_Target
 			}
 			alpha = saturate(alpha + 0.3);
 		}
-		// i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
+		i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
 	}
 	
     if (alpha < 1.0/255.0)

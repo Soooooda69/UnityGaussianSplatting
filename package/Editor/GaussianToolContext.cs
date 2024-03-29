@@ -5,6 +5,7 @@ using GaussianSplatting.Runtime;
 using UnityEditor;
 using UnityEditor.EditorTools;
 using UnityEngine;
+using System.IO;
 
 namespace GaussianSplatting.Editor
 {
@@ -80,6 +81,14 @@ namespace GaussianSplatting.Editor
             }
         }
 
+        public void saveTexture2D (Texture2D texture, string file) 
+        {
+            byte[] bytes = texture.EncodeToPNG ();
+            UnityEngine.Object.Destroy (texture);
+            System.IO.File.WriteAllBytes (file, bytes);
+            Debug.Log ("write to File over");
+            UnityEditor.AssetDatabase.Refresh ();
+        }
         static bool IsViewToolActive()
         {
             return Tools.viewToolActive || Tools.current == Tool.View || (Event.current != null && Event.current.alt);
@@ -131,8 +140,51 @@ namespace GaussianSplatting.Editor
                         Vector2 rectMin = HandleUtility.GUIPointToScreenPixelCoordinate(rect.min);
                         Vector2 rectMax = HandleUtility.GUIPointToScreenPixelCoordinate(rect.max);
                         gs.EditUpdateSelection(rectMin, rectMax, sceneView.camera, evt.control);
+                        // gs.EditUpdateSelection(rectMin, rectMax, Camera.main, evt.control);
                         GaussianSplatRendererEditor.RepaintAll();
                         evt.Use();
+                    }
+                    break;
+                case EventType.KeyDown:
+                    if (evt.keyCode == KeyCode.M)
+                    {
+                        int width = Camera.main.pixelWidth;
+                        int height = Camera.main.pixelHeight;
+                        Texture2D selectionMask = new Texture2D(width, height, TextureFormat.R8, false);
+                        byte[] imageData = File.ReadAllBytes("Assets/46_Mask.png");
+                        selectionMask.LoadImage(imageData);
+                        // int radius = Math.Min(width, height) / 3;
+                        // Color[] pixels = new Color[width * height];
+                        // for (int y = 0; y < width; y++)
+                        // {
+                        //     for (int x = 0; x < height; x++)
+                        //     {
+                        //         int index = y * width + x;
+
+                        //         // Check if the pixel falls within the circle
+                        //         int dx = x - width / 2;
+                        //         int dy = y - height / 2;
+                        //         double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                        //         if (distance <= radius)
+                        //         {
+                        //             pixels[index] = Color.black;
+                        //         }
+                        //         else
+                        //         {
+                        //             pixels[index] = Color.white;
+                        //         }
+                        //     }
+                        // }
+                        // selectionMask.SetPixels(pixels);
+                        // // saveTexture2D(selectionMask, "selectionMask.png");
+                        // selectionMask.Apply();
+                        if (selectionMask != null)
+                            {
+                                gs.EditUpdateSelectionMask(selectionMask, Camera.main, evt.control);
+                                GaussianSplatRendererEditor.RepaintAll();
+                            }
+                            evt.Use();
                     }
                     break;
                 case EventType.MouseUp:

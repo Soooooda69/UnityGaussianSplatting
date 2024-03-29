@@ -3,6 +3,7 @@ import time
 import random
 import cv2
 import os
+from natsort import natsorted
 
 class StreamData:
     def __init__(self):
@@ -10,7 +11,9 @@ class StreamData:
         self.port = 8888
         self.pose = "0 0 0 0 0 0 1"
         self.poses = []
-        self.images = [os.path.join('images_h', img) for img in os.listdir('test_data/images_h')]
+        images_dir = 'test_data/key_images_h'
+        self.images = natsorted([os.path.join(images_dir, img) for img in os.listdir(images_dir)])
+        self.image_ids = [int(img.split('.png')[0]) for img in os.listdir(images_dir)]
         self.load_pose_data()
         self.start_server()
         
@@ -27,11 +30,11 @@ class StreamData:
 
     def load_pose_data(self):
         # Load pose data from a file or other source
-        with open('test_data/aligned_poses_gt.txt', 'r') as file:
+        with open('test_data/poses_pred.txt', 'r') as file:
             file.readline() # Skip the header
             for line in file:
                 pose = line.strip().split(' ')
-                pose = ' '.join(pose[1:])
+                pose = ' '.join(pose[0:])
                 self.poses.append(pose)
         
     def start_server(self):

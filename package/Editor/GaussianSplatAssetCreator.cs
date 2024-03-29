@@ -1156,19 +1156,22 @@ namespace GaussianSplatting.Editor
 
             string json = File.ReadAllText(camerasPath);
             var jsonCameras = JSONParser.FromJson<List<JsonCamera>>(json);
+            var jsonCamerasList = new List<JsonCamera>(jsonCameras);
+            jsonCamerasList.Sort((a, b) => Convert.ToInt32(a.img_name).CompareTo(Convert.ToInt32(b.img_name)));
+
             if (jsonCameras == null || jsonCameras.Count == 0)
                 return null;
 
             var result = new GaussianSplatAsset.CameraInfo[jsonCameras.Count];
             for (var camIndex = 0; camIndex < jsonCameras.Count; camIndex++)
             {
-                var jsonCam = jsonCameras[camIndex];
+                var jsonCam = jsonCamerasList[camIndex];
                 var pos = new Vector3(jsonCam.position[0], jsonCam.position[1], jsonCam.position[2]);
                 // the matrix is a "view matrix", not "camera matrix" lol
                 var axisx = new Vector3(jsonCam.rotation[0][0], jsonCam.rotation[1][0], jsonCam.rotation[2][0]);
                 var axisy = new Vector3(jsonCam.rotation[0][1], jsonCam.rotation[1][1], jsonCam.rotation[2][1]);
                 var axisz = new Vector3(jsonCam.rotation[0][2], jsonCam.rotation[1][2], jsonCam.rotation[2][2]);
-
+                
                 axisy *= -1;
                 axisz *= -1;
 

@@ -237,7 +237,7 @@ namespace GaussianSplatting.Runtime
         public Shader m_ShaderDebugBoxes;
         [Tooltip("Gaussian splatting compute shader")]
         public ComputeShader m_CSSplatUtilities;
-
+        // public Texture2D selectionMask;
         int m_SplatCount; // initially same as asset splat count, but editing can change this
         GraphicsBuffer m_GpuSortDistances;
         internal GraphicsBuffer m_GpuSortKeys;
@@ -347,7 +347,7 @@ namespace GaussianSplatting.Runtime
             ScaleSelection,
             ExportData,
             CopySplats,
-            SelectPointByRayCast,
+            MaskSelectionUpdate,
         }
 
         public bool HasValidAsset =>
@@ -466,7 +466,6 @@ namespace GaussianSplatting.Runtime
             cmb.SetComputeBufferParam(cs, kernelIndex, Props.SplatDeletedBits, m_GpuEditDeleted ?? m_GpuPosData);
             cmb.SetComputeBufferParam(cs, kernelIndex, Props.SplatViewData, m_GpuView);
             cmb.SetComputeBufferParam(cs, kernelIndex, Props.OrderBuffer, m_GpuSortKeys);
-
             cmb.SetComputeIntParam(cs, Props.SplatBitsValid, m_GpuEditSelected != null && m_GpuEditDeleted != null ? 1 : 0);
             uint format = (uint)m_Asset.posFormat | ((uint)m_Asset.scaleFormat << 8) | ((uint)m_Asset.shFormat << 16);
             cmb.SetComputeIntParam(cs, Props.SplatFormat, (int)format);
@@ -803,62 +802,39 @@ namespace GaussianSplatting.Runtime
             DispatchUtilsAndExecute(cmb, KernelIndices.SelectionUpdate, m_SplatCount);
             UpdateEditCountsAndBounds();
         }
-        public (bool found, Vector3 point) EditSelectPointByRayCast(Camera cam, Vector2 screenPos)
+
+        public void EditUpdateSelectionMask(Texture2D selectionMask, Camera cam, bool subtract)
         {
-            if (!EnsureEditingBuffers()) return (false, Vector3.zero);
+            if (!EnsureEditingBuffers()) return;
 
-            // Create a ray from the camera through the clicked screen position
-            Ray ray = cam.ScreenPointToRay(screenPos);
+            Graphics.CopyBuffer(m_GpuEditSelectedMouseDown, m_GpuEditSelected);
 
-            // Transform the ray from world space to the splat renderer's local space
-            Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
-            ray.origin = worldToLocal.MultiplyPoint(ray.origin);
-            ray.direction = worldToLocal.MultiplyVector(ray.direction).normalized;
+            var tr = transform;
+            Matrix4x4 matView = cam.worldToCameraMatrix;
+            Matrix4x4 matProj = GL.GetGPUProjectionMatrix(cam.projectionMatrix, true);
+            Matrix4x4 matO2W = tr.localToWorldMatrix;
+            Matrix4x4 matW2O = tr.worldToLocalMatrix;
+            int screenW = cam.pixelWidth, screenH = cam.pixelHeight;
+            Vector4 screenPar = new Vector4(screenW, screenH, 0, 0);
+            Vector4 camPos = cam.transform.position;
 
-            // Find the closest point to the ray
-            int closestIndex = -1;
-            float closestDistance = float.MaxValue;
-            Vector3 closestPoint = Vector3.zero;
+            using var cmb = new CommandBuffer { name = "SplatMaskSelectionUpdate" };
+            SetAssetDataOnCS(cmb, KernelIndices.MaskSelectionUpdate);
 
-            using (var cmb = new CommandBuffer { name = "SplatSelectPointByRayCast" })
-            {
-                // Create a temporary buffer to store the distances
-                var distancesBuffer = new ComputeBuffer(m_SplatCount, sizeof(float));
-                var positionsBuffer = new ComputeBuffer(m_SplatCount, sizeof(float) * 3);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixVP, matProj * matView);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixMV, matView * matO2W);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixP, matProj);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixObjectToWorld, matO2W);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixWorldToObject, matW2O);
 
-                SetAssetDataOnCS(cmb, KernelIndices.SelectPointByRayCast);
-                cmb.SetComputeVectorParam(m_CSSplatUtilities, "_RayOrigin", ray.origin);
-                cmb.SetComputeVectorParam(m_CSSplatUtilities, "_RayDirection", ray.direction);
-                cmb.SetComputeBufferParam(m_CSSplatUtilities, (int)KernelIndices.SelectPointByRayCast, "_DistancesBuffer", distancesBuffer);
-                cmb.SetComputeBufferParam(m_CSSplatUtilities, (int)KernelIndices.SelectPointByRayCast, "_PositionsBuffer", positionsBuffer);
-                DispatchUtilsAndExecute(cmb, KernelIndices.SelectPointByRayCast, m_SplatCount);
+            cmb.SetComputeVectorParam(m_CSSplatUtilities, Props.VecScreenParams, screenPar);
+            cmb.SetComputeVectorParam(m_CSSplatUtilities, Props.VecWorldSpaceCameraPos, camPos);
 
-                // Read back the distances from the GPU
-                var distances = new float[m_SplatCount];
-                var positions = new Vector3[m_SplatCount];
-                distancesBuffer.GetData(distances);
-                positionsBuffer.GetData(positions);
+            cmb.SetComputeTextureParam(m_CSSplatUtilities, (int)KernelIndices.MaskSelectionUpdate, "_SelectionMask", selectionMask);
+            cmb.SetComputeIntParam(m_CSSplatUtilities, Props.SelectionMode, subtract ? 0 : 1);
 
-                // Find the index and position of the closest point
-                for (int i = 0; i < m_SplatCount; i++)
-                {
-                    if (distances[i] < closestDistance)
-                    {
-                        closestDistance = distances[i];
-                        closestIndex = i;
-                        closestPoint = positions[closestIndex];
-                    }
-                }
-
-                distancesBuffer.Release();
-                positionsBuffer.Release();
-            }
-            if (closestIndex >= 0)
-            {
-                return (true, closestPoint);
-            }
-
-            return (false, Vector3.zero);
+            DispatchUtilsAndExecute(cmb, KernelIndices.MaskSelectionUpdate, m_SplatCount);
+          UpdateEditCountsAndBounds();
         }
 
         public void EditTranslateSelection(Vector3 localSpacePosDelta)
