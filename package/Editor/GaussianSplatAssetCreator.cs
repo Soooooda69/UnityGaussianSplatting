@@ -1181,7 +1181,8 @@ namespace GaussianSplatting.Editor
                     axisX = axisx,
                     axisY = axisy,
                     axisZ = axisz,
-                    fov = 25 //@TODO
+                    fov = 25,
+                    img_name = jsonCam.img_name//@TODO
                 };
                 result[camIndex] = cam;
             }

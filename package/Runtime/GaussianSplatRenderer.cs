@@ -10,6 +10,8 @@ using Unity.Profiling.LowLevel;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
+using UnityEngine.UI;
+using System.IO;
 
 namespace GaussianSplatting.Runtime
 {
@@ -20,7 +22,7 @@ namespace GaussianSplatting.Runtime
         internal static readonly ProfilerMarker s_ProfCompose = new(ProfilerCategory.Render, "GaussianSplat.Compose", MarkerFlags.SampleGPU);
         internal static readonly ProfilerMarker s_ProfCalcView = new(ProfilerCategory.Render, "GaussianSplat.CalcView", MarkerFlags.SampleGPU);
         // ReSharper restore MemberCanBePrivate.Global
-
+        
         public static GaussianSplatRenderSystem instance => ms_Instance ??= new GaussianSplatRenderSystem();
         static GaussianSplatRenderSystem ms_Instance;
 
@@ -213,7 +215,9 @@ namespace GaussianSplatting.Runtime
             DebugChunkBounds,
         }
         public GaussianSplatAsset m_Asset;
-
+        public string img_ID;
+        public Image displayImage;
+        
         [Range(0.1f, 2.0f)] [Tooltip("Additional scaling factor for the splats")]
         public float m_SplatScale = 1.0f;
         [Range(0.05f, 20.0f)]
@@ -227,6 +231,7 @@ namespace GaussianSplatting.Runtime
         public int m_SortNthFrame = 1;
 
         public RenderMode m_RenderMode = RenderMode.Splats;
+        // public Image displayImage;
         [Range(1.0f,15.0f)] public float m_PointDisplaySize = 3.0f;
 
         public GaussianCutout[] m_Cutouts;
@@ -620,25 +625,65 @@ namespace GaussianSplatting.Runtime
 
         public void ActivateCamera(int index)
         {
-            Camera mainCam = Camera.main;
-            if (!mainCam)
-                return;
-            if (!m_Asset || m_Asset.cameras == null)
-                return;
-
-            var selfTr = transform;
-            var camTr = mainCam.transform;
-            var prevParent = camTr.parent;
-            var cam = m_Asset.cameras[index];
-            camTr.parent = selfTr;
-            camTr.localPosition = cam.pos;
-            camTr.localRotation = Quaternion.LookRotation(cam.axisZ, cam.axisY);
-            camTr.parent = prevParent;
-            camTr.localScale = Vector3.one;
+            Camera[] cameras = Camera.allCameras;
+            // Camera mainCam = Camera.main;
+            // Camera mainCam = cameras[0];
+            // Camera mainCam2 = cameras[1];
+            // if (!mainCam)
+            //     return;
+            // if (!m_Asset || m_Asset.cameras == null)
+            //     return;
+            foreach (Camera mainCam in cameras)
+            {
+                var selfTr = transform;
+                var camTr = mainCam.transform;
+                var prevParent = camTr.parent;
+                var cam = m_Asset.cameras[index];
+                img_ID = cam.img_name;
+                Debug.Log("ActivateCamera: " + img_ID);
+                camTr.parent = selfTr;
+                camTr.localPosition = cam.pos;
+                camTr.localRotation = Quaternion.LookRotation(cam.axisZ, cam.axisY);
+                camTr.parent = prevParent;
+                camTr.localScale = Vector3.one;
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(camTr);
+            LoadImage(img_ID);
 #endif
+            } 
         }
+        string imageDirectory = "../../data/key_images_h";
+        private void LoadImage(string imageID)
+        {
+            
+            // Construct the image file path based on the img_ID
+            string imageFilePath = Path.Combine(imageDirectory, imageID + ".png");
+            Debug.Log("LoadImage: " + imageFilePath);
+            // Check if the image file exists
+            if (File.Exists(imageFilePath))
+            {
+                // Load the image file as a byte array
+                byte[] imageBytes = File.ReadAllBytes(imageFilePath);
+
+                // Create a texture from the image bytes
+                Texture2D texture = new Texture2D(2, 2);
+                texture.LoadImage(imageBytes);
+
+                // Create a sprite from the texture
+                Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), Vector2.one * 0.5f);
+
+                // Assign the sprite to the UI Image
+                displayImage.sprite = sprite;
+            }
+            else
+            {
+                Debug.LogWarning("Image file not found: " + imageFilePath);
+            }
+        }
+        // public void SetImage(Image newImage)
+        // {
+        //     displayImage = newImage;
+        // }
 
         void ClearGraphicsBuffer(GraphicsBuffer buf)
         {

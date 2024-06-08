@@ -242,6 +242,7 @@ namespace GaussianSplatting.Runtime
             public Vector3 pos;
             public Vector3 axisX, axisY, axisZ;
             public float fov;
+            public string img_name;
         }
     }
 }

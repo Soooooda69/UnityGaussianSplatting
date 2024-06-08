@@ -97,9 +97,10 @@ half4 frag (v2f i) : SV_Target
 				alpha = 0.1;
 				i.col.rgb = selectedColor;
 			}
-			alpha = saturate(alpha + 0.3);
+			// alpha = saturate(alpha + 0.3);
 		}
-		i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
+		// i.col.rgb = lerp(i.col.rgb, selectedColor, 0.5);
+		i.col.rgb = selectedColor;
 	}
 	
     if (alpha < 1.0/255.0)

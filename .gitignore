@@ -25,4 +25,6 @@
 /projects/**/UserSettings/*
 /projects/**/obj/*
 
-/test_data/*
+/data/*
+/segment-anything/
+/segment-anything-gui/

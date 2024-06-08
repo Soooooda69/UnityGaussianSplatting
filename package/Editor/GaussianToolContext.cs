@@ -151,34 +151,9 @@ namespace GaussianSplatting.Editor
                         int width = Camera.main.pixelWidth;
                         int height = Camera.main.pixelHeight;
                         Texture2D selectionMask = new Texture2D(width, height, TextureFormat.R8, false);
-                        byte[] imageData = File.ReadAllBytes("Assets/46_Mask.png");
+                        Debug.Log("imgID" + gs.img_ID);
+                        byte[] imageData = File.ReadAllBytes("../../data/masks/"+"mask_"+gs.img_ID+".png");
                         selectionMask.LoadImage(imageData);
-                        // int radius = Math.Min(width, height) / 3;
-                        // Color[] pixels = new Color[width * height];
-                        // for (int y = 0; y < width; y++)
-                        // {
-                        //     for (int x = 0; x < height; x++)
-                        //     {
-                        //         int index = y * width + x;
-
-                        //         // Check if the pixel falls within the circle
-                        //         int dx = x - width / 2;
-                        //         int dy = y - height / 2;
-                        //         double distance = Math.Sqrt(dx * dx + dy * dy);
-
-                        //         if (distance <= radius)
-                        //         {
-                        //             pixels[index] = Color.black;
-                        //         }
-                        //         else
-                        //         {
-                        //             pixels[index] = Color.white;
-                        //         }
-                        //     }
-                        // }
-                        // selectionMask.SetPixels(pixels);
-                        // // saveTexture2D(selectionMask, "selectionMask.png");
-                        // selectionMask.Apply();
                         if (selectionMask != null)
                             {
                                 gs.EditUpdateSelectionMask(selectionMask, Camera.main, evt.control);
